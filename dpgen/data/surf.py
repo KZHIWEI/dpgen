@@ -563,10 +563,12 @@ def run_vasp_relax(jdata, mdata):
         if not _vasp_check_fin(ii):
             relax_run_tasks.append(ii)
     run_tasks = [ii.replace(work_dir+"/", "") for ii in relax_run_tasks]
-
-    #dlog.info(run_tasks)
-    dispatcher = make_dispatcher(mdata['fp_machine'], mdata['fp_resources'], work_dir, run_tasks, fp_group_size)
-    dispatcher.run_jobs(fp_resources,
+    api_version = mdata.get('api_version', '0.9')
+    if LooseVersion(api_version) < LooseVersion('1.0'):
+        warnings.warn(f"the dpdispatcher will be updated to new version."
+            f"And the interface may be changed. Please check the documents for more details")
+        dispatcher = make_dispatcher(mdata['fp_machine'], mdata['fp_resources'], work_dir, run_tasks, fp_group_size)
+        dispatcher.run_jobs(fp_resources,
                        [fp_command],
                        work_dir,
                        run_tasks,
@@ -574,6 +576,21 @@ def run_vasp_relax(jdata, mdata):
                        forward_common_files,
                        forward_files,
                        backward_files)
+
+    elif LooseVersion(api_version) >= LooseVersion('1.0'):
+        submission = make_submission(
+            mdata['fp_machine'],
+            mdata['fp_resources'],
+            commands=[fp_command],
+            work_path=work_dir,
+            run_tasks=run_tasks,
+            group_size=fp_group_size,
+            forward_common_files=forward_common_files,
+            forward_files=forward_files,
+            backward_files=backward_files,
+            outlog = 'fp.log',
+            errlog = 'fp.log')
+        submission.run_submission()
 
 def gen_init_surf(args):
     try:
